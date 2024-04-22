@@ -28,8 +28,8 @@ Repositorio: https://github.com/martuan/cintaTransportadoraRGB
 
 #define VELOCIDAD_INICIAL 150//200
 #define VELOCIDAD_FINAL 250//255
-#define NUMPIXELS 8
-#define PIN 1//TX0
+#define NUMPIXELS 16
+#define PIN 19//TX0
 
 //**************************************
 //*********** BLUETOOTH  *****************
@@ -90,7 +90,7 @@ const int pwmChannelServo = 1;
 int contadorRojo = 0;
 int contadorVerde = 0;
 int contadorAzul = 0;
-int toleranciaColor = 10;
+int toleranciaColor = 25;
 int RGB_r = 0;
 int RGB_g = 0;
 int RGB_b = 0;
@@ -127,7 +127,7 @@ void setup() {
 
 	for(int i=0;i<NUMPIXELS;i++){
 
-		pixels.setPixelColor(i, 255, 255, 255); // Brillo moderado en rojo
+		pixels.setPixelColor(i, 200, 100, 200); //
 
 		pixels.show();   // Mostramos y actualizamos el color del pixel de nuestra cinta led RGB
 
@@ -384,6 +384,7 @@ void switchCaseParametros(char charParamID, String valorParam){
   String nombreSensor = "";
   int velocidad = 0;
   String colorSimulado = {};
+  int r, g, b;
 
   
   //valorParam = 
@@ -492,6 +493,18 @@ void switchCaseParametros(char charParamID, String valorParam){
 		flagSimulacionColor = 1; 
 		colorSimulado = valorParam;
 		simulacionRGB(colorSimulado);
+
+	break;
+	case 'N'://tolerancia
+
+		r = valorParam.substring(0,4).toInt();
+		g = valorParam.substring(4,8).toInt();
+		b = valorParam.substring(8,12).toInt();
+		
+		Serial.printf("setearNeopixel r g b = %i, %i, %i", r, g, b);
+
+		setearColorNeopixel(r, g, b);
+		
 
 	break;
     default:
@@ -1090,6 +1103,7 @@ void detectarColorAvanzado(int demoraPasosMotorCC){
 	int posFinal = 6;
 	int contador = 0;
 	float tolerencia = (float)toleranciaColor;
+	int flagCumpleCondiciones = 0;
 
 	r_suma = 0;
 	g_suma = 0;
@@ -1222,47 +1236,80 @@ void detectarColorAvanzado(int demoraPasosMotorCC){
 
 
 
-	if(r <= valorMasToleranciaROJO_r && r >= valorMenosToleranciaROJO_r){
-		Serial.println("ROJO - 1. Cumple");
-		if(g <= valorMasToleranciaROJO_g && g >= valorMenosToleranciaROJO_g){
-			Serial.println("ROJO - 2. Cumple");
-			if(b <= valorMasToleranciaROJO_b && b >= valorMenosToleranciaROJO_b){
-				Serial.println("ROJO - 3. Cumple");
+	if(flagCumpleCondiciones == 0){//si no ha cumplido las tres condiciones (no definió color) comienza a evaluar
+
+		if(r <= valorMasToleranciaROJO_r && r >= valorMenosToleranciaROJO_r){
+			Serial.println("ROJO - 1. Cumple");
+			if(g <= valorMasToleranciaROJO_g && g >= valorMenosToleranciaROJO_g){
+				Serial.println("ROJO - 2. Cumple");
+				if(b <= valorMasToleranciaROJO_b && b >= valorMenosToleranciaROJO_b){
+					Serial.println("ROJO - 3. Cumple");
+					
+					Serial.println("ROJO");
+					SerialBT.println("ROJO");
+					colorDetectado = "ROJO";
+					flagCumpleCondiciones = 1;
+				}
+			}
+		}
+
+	}
+	
+	
+	if(flagCumpleCondiciones == 0){//si no ha cumplido las tres condiciones (no definió color) comienza a evaluar
+
+		if(r <= valorMasToleranciaVERDE_r && r >= valorMenosToleranciaVERDE_r){
+			Serial.println("VERDE - 1. Cumple");
+			if(g <= valorMasToleranciaVERDE_g && g >= valorMenosToleranciaVERDE_g){
+				Serial.println("VERDE - 2. Cumple");
+				if(b <= valorMasToleranciaVERDE_b && b >= valorMenosToleranciaVERDE_b){
+					Serial.println("VERDE - 3. Cumple");
+							
+					Serial.println("VERDE");
+					SerialBT.println("VERDE");
+					colorDetectado = "VERDE";
+					flagCumpleCondiciones = 1;
 				
-				Serial.println("ROJO");
-				SerialBT.println("ROJO");
-				colorDetectado = "ROJO";
+				}
 			}
 		}
-	}else if(r <= valorMasToleranciaVERDE_r && r >= valorMenosToleranciaVERDE_r){
-		Serial.println("VERDE - 1. Cumple");
-		if(g <= valorMasToleranciaVERDE_g && g >= valorMenosToleranciaVERDE_g){
-			Serial.println("VERDE - 2. Cumple");
-			if(b <= valorMasToleranciaVERDE_b && b >= valorMenosToleranciaVERDE_b){
-				Serial.println("VERDE - 3. Cumple");
-						
-				Serial.println("VERDE");
-				SerialBT.println("VERDE");
-				colorDetectado = "VERDE";
-			
-			}
+	}
+	
+	if(flagCumpleCondiciones == 0){//si no ha cumplido las tres condiciones (no definió color) comienza a evaluar
+		if(r <= valorMasToleranciaAZUL_r && r >= valorMenosToleranciaAZUL_r){
+			Serial.println("AZUL - 1. Cumple");
+			if(g <= valorMasToleranciaAZUL_g && g >= valorMenosToleranciaAZUL_g){
+				Serial.println("AZUL - 2. Cumple");
+				if(b <= valorMasToleranciaAZUL_b && b >= valorMenosToleranciaAZUL_b){
+
+					Serial.println("AZUL - 3. Cumple");
+
+					Serial.println("AZUL");
+					SerialBT.println("AZUL");
+					colorDetectado = "AZUL";
+					flagCumpleCondiciones = 1;	
+				
+				}
+			}	
 		}
-	}else if(r <= valorMasToleranciaAZUL_r && r >= valorMenosToleranciaAZUL_r){
-		Serial.println("AZUL - 1. Cumple");
-		if(g <= valorMasToleranciaAZUL_g && g >= valorMenosToleranciaAZUL_g){
-			Serial.println("AZUL - 2. Cumple");
-			if(b <= valorMasToleranciaAZUL_b && b >= valorMenosToleranciaAZUL_b){
-
-				Serial.println("AZUL - 3. Cumple");
-
-				Serial.println("AZUL");
-				SerialBT.println("AZUL");
-				colorDetectado = "AZUL";	
-			
-			}
-		}	
-	}else{
+	}
+	
+	if(flagCumpleCondiciones == 0){//si luego de las evaluaciones no cumplió las condiciones: color indefinido
 		Serial.println("No identificado");
 		colorDetectado = "INDEFINIDO";
 	}
+}
+
+
+void setearColorNeopixel(int r, int g, int b){
+
+
+	for(int i = 0; i < NUMPIXELS; i++){
+
+		pixels.setPixelColor(i, r, g, b);
+
+	}
+
+	pixels.show();
+	
 }
