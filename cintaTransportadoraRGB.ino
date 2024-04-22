@@ -11,7 +11,7 @@ Programado en ESP32.
 Autor: Martín Cioffi
 Fecha: 23-11-2023
 Versión: 1.00
-Repositorio: 
+Repositorio: https://github.com/martuan/cintaTransportadoraRGB
 
 
 
