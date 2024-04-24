@@ -479,7 +479,7 @@ void switchCaseParametros(char charParamID, String valorParam){
 	case 'C'://autocalibracion
 
 		color = valorParam.toInt();
-		autocalibracion(color, demoraEntrePasos);
+		autocalibracion(color, demoraEntrePasos, 3);
 
 	break;
 	case 'T'://tolerancia
@@ -817,7 +817,7 @@ void detectarColor(void){
 
 }
 
-void autocalibracion(int colorCalibrado, int demoraPasosMotorCC){
+void autocalibracion(int colorCalibrado, int demoraPasosMotorCC, int cantidadMuestras){
 
 	//colorCalibrado
 	//1 = ROJO
@@ -830,203 +830,223 @@ void autocalibracion(int colorCalibrado, int demoraPasosMotorCC){
 	int r_suma, g_suma, b_suma, c_suma = 0;
 	int i, j;
 	int matrizValoresRGB[10][3] = {};
+	int matrizPromediosRGB[cantidadMuestras][3] = {};
 	int x = 0;
 	int posInicial = 2;
 	int posFinal = 6;
 	int contador = 0;
 	float tolerencia = (float)toleranciaColor;
+	int valoresPromediados_r, valoresPromediados_g, valoresPromediados_b;
+	int sumaPromediados_r, sumaPromediados_g, sumaPromediados_b;
+
+
 
 	r_suma = 0;
 	g_suma = 0;
 	b_suma = 0;
 	c_suma = 0;
 
+	sumaPromediados_r = 0;
+	sumaPromediados_g = 0;
+	sumaPromediados_b = 0;
+
 	if(colorCalibrado == 1){
-		Serial.println("Calibrando ROJO - Ingrese solo una muestra");
+		Serial.printf("Calibrando ROJO - Ingrese %i muestra/s\n", cantidadMuestras);
 	}else if(colorCalibrado == 2){
-		Serial.println("Calibrando VERDE - Ingrese solo una muestra");
+		Serial.printf("Calibrando VERDE - Ingrese %i muestra/s\n", cantidadMuestras);
 	}else if(colorCalibrado == 3){
-		Serial.println("Calibrando AZUL - Ingrese solo una muestra");
+		Serial.printf("Calibrando AZUL - Ingrese %i muestra/s\n", cantidadMuestras);
 	}
 
 
-	ledcWrite(pwmChannel, 255);
+	//Recorre según la cantidad de muestras a calibrar
+	for(int n = 0; n < cantidadMuestras; n++){
 
-	while(proximidad < PROXIMIDAD_UMBRAL){
-
-		proximidad = apds.readProximity();
-		delay(50);
-
-		//Serial.println(proximidad);
-
-
-
-	}
-	
-	//si detectó un objeto frena la cinta
-	if(proximidad >= PROXIMIDAD_UMBRAL){
-		Serial.println("*******Objeto detectado*********");
-		Serial.println("Stop");
-		
-		
-		//frenar motor y leer RGB	
-		digitalWrite(motor1Pin1, HIGH);
-		digitalWrite(motor1Pin2, HIGH);
+		Serial.printf("Calibrando muestra nº %i\n", n+1);
 
 		ledcWrite(pwmChannel, 255);
 
-	}
+		proximidad = 0;//se setea a 0 (cero) para que entre siempre al while a verificar proximidad
 
-	delay(500);
-	//Luego lee el color
+		while(proximidad < PROXIMIDAD_UMBRAL){
 
+			proximidad = apds.readProximity();
+			delay(50);
 
-	//wait for color data to be ready
-	while(!apds.colorDataReady()){
-		delay(5);
-	}
-
-	for(i = 0; i < 10; i++){
-
-		for(j = 0; j < 1; j++){
-
-			//get the data and print the different channels
-			apds.getColorData(&r, &g, &b, &c);
-			Serial.print("red: ");
-			Serial.print(r);
-			
-			Serial.print(" green: ");
-			Serial.print(g);
-			
-			Serial.print(" blue: ");
-			Serial.print(b);
-			
-			Serial.print(" clear: ");
-			Serial.println(c);
-			Serial.println();
+			//Serial.println(proximidad);
 
 		}
 		
+		//si detectó un objeto frena la cinta
+		if(proximidad >= PROXIMIDAD_UMBRAL){
+			Serial.println("*******Objeto detectado*********");
+			Serial.println("Stop");
+			
+			
+			//frenar motor y leer RGB	
+			digitalWrite(motor1Pin1, HIGH);
+			digitalWrite(motor1Pin2, HIGH);
 
-		microAvanceMotorCC(demoraPasosMotorCC);
+			ledcWrite(pwmChannel, 255);
 
-		matrizValoresRGB[i][0] = r;
-		matrizValoresRGB[i][1] = g;
-		matrizValoresRGB[i][2] = b;
+		}
 
-		r_suma += r;
-		g_suma += g;
-		b_suma += b;
-
-		
-
-	}
+		delay(500);
+		//Luego lee el color
 
 
+		//Si el sensor RGB no está disponible, espera
+		while(!apds.colorDataReady()){
+			delay(5);
+		}
+
+		//Realiza 10 lecturas del objeto mientras avanza
+		for(i = 0; i < 10; i++){
+
+			for(j = 0; j < 1; j++){
+
+				//Sensa el objeto y muestra los valores
+				apds.getColorData(&r, &g, &b, &c);
+				Serial.print("red: ");
+				Serial.print(r);
+				
+				Serial.print(" green: ");
+				Serial.print(g);
+				
+				Serial.print(" blue: ");
+				Serial.print(b);
+				
+				Serial.print(" clear: ");
+				Serial.println(c);
+				Serial.println();
+
+			}
+
+			//Avanza una distancia muy corta para leer en distintos puntos del objeto
+			microAvanceMotorCC(demoraPasosMotorCC);
+
+			//Se guardan los valores
+			matrizValoresRGB[i][0] = r;
+			matrizValoresRGB[i][1] = g;
+			matrizValoresRGB[i][2] = b;
+
+			//Se acumulan
+			r_suma += r;
+			g_suma += g;
+			b_suma += b;
+
+		}
 	
-	//obtiene los promedios
-	r_prom = r_suma/i;
-	g_prom = g_suma/i;
-	b_prom = b_suma/i;
+		//obtiene los promedios
+		r_prom = r_suma/i;
+		g_prom = g_suma/i;
+		b_prom = b_suma/i;
 
-	Serial.printf("Promedios --> red: %i  green: %i  blue: %i\r\n", r_prom, g_prom, b_prom);
+		Serial.printf("Promedios --> red: %i  green: %i  blue: %i\r\n", r_prom, g_prom, b_prom);
 
-	//limpia las sumas para comenzar desde cero
-	r_suma = 0;
-	g_suma = 0;
-	b_suma = 0;
+		//limpia las sumas para comenzar desde cero
+		r_suma = 0;
+		g_suma = 0;
+		b_suma = 0;
 
-	//descarta los primeros y últimos valores del array
-	for(x = posInicial; x < posFinal; x++){
+		//descarta los primeros y últimos valores del array
+		for(x = posInicial; x < posFinal; x++){
 
-		r_suma += matrizValoresRGB[x][0];
-		Serial.printf("matrizValorRGB = %i\n", matrizValoresRGB[x][0]);
-		g_suma += matrizValoresRGB[x][1];
-		b_suma += matrizValoresRGB[x][2];
-		contador++;
+			r_suma += matrizValoresRGB[x][0];
+			Serial.printf("matrizValorRGB = %i\n", matrizValoresRGB[x][0]);
+			g_suma += matrizValoresRGB[x][1];
+			b_suma += matrizValoresRGB[x][2];
+			contador++;
 
-	}
+		}
 
-	Serial.printf("la suma de r es = %i\r\n", r_suma);
-	Serial.printf("valor de x es = %i\r\n", x);
-
-
-	//obtiene los promedios
-	r_prom = r_suma/contador;
-	g_prom = g_suma/contador;
-	b_prom = b_suma/contador;
-
-	//limpia las sumas para comenzar desde cero
-	r_suma = 0;
-	g_suma = 0;
-	b_suma = 0;
-
-	//Serial.println(r_suma);
-	//Serial.println(g_suma);
-	//Serial.println(b_suma);
-
-	Serial.printf("Promedios de la matriz--> red: %i  green: %i  blue: %i\r\n", r_prom, g_prom, b_prom);
-	
-
-	//asignación de componentes RGB según la muestra
-/*
-	if(colorCalibrado == 1){
-
-		ROJO_PATRON.r = (int)r;
-		ROJO_PATRON.g = (int)g;
-		ROJO_PATRON.b = (int)b;
-
-	}else if(colorCalibrado == 2){
-
-		VERDE_PATRON.r = (int)r;
-		VERDE_PATRON.g = (int)g;
-		VERDE_PATRON.b = (int)b;
+		//Serial.printf("la suma de r es = %i\r\n", r_suma);
+		//Serial.printf("valor de x es = %i\r\n", x);
 
 
-	}else if(colorCalibrado == 3){
+		//obtiene los promedios habiendo descartado las primeras y últimas lecturas
+		r_prom = r_suma/contador;
+		g_prom = g_suma/contador;
+		b_prom = b_suma/contador;
 
-		AZUL_PATRON.r = (int)r;
-		AZUL_PATRON.g = (int)g;
-		AZUL_PATRON.b = (int)b;
+		contador = 0;
 
+		//Se guardan los promedios
+		matrizPromediosRGB[n][0] = r_prom;
+		matrizPromediosRGB[n][1] = g_prom;
+		matrizPromediosRGB[n][2] = b_prom;
+
+		//limpia las sumas para comenzar desde cero
+		r_suma = 0;
+		g_suma = 0;
+		b_suma = 0;
+
+		//Serial.println(r_suma);
+		//Serial.println(g_suma);
+		//Serial.println(b_suma);
+
+		Serial.printf("Promedios descartando primeras y últimas lecturas--> red: %i  green: %i  blue: %i\r\n", r_prom, g_prom, b_prom);
+
+		delay(2000);
+
+		//avanza la cinta
+		digitalWrite(motor1Pin1, HIGH);
+		digitalWrite(motor1Pin2, LOW);
+		ledcWrite(pwmChannel, 255);
+
+		delay(2000);
 
 	}
-*/
-
-
-	if(colorCalibrado == 1){
-
-		ROJO_PATRON.r = (int)r_prom;
-		ROJO_PATRON.g = (int)g_prom;
-		ROJO_PATRON.b = (int)b_prom;
-
-	}else if(colorCalibrado == 2){
-
-		VERDE_PATRON.r = (int)r_prom;
-		VERDE_PATRON.g = (int)g_prom;
-		VERDE_PATRON.b = (int)b_prom;
-
-
-	}else if(colorCalibrado == 3){
-
-		AZUL_PATRON.r = (int)r_prom;
-		AZUL_PATRON.g = (int)g_prom;
-		AZUL_PATRON.b = (int)b_prom;
-
-
-	}
-
-	delay(5000);
 
 	Serial.println("Finalizó de calibrar el color");
 
-	//avanza la cinta
-	digitalWrite(motor1Pin1, HIGH);
-	digitalWrite(motor1Pin2, LOW);
-	ledcWrite(pwmChannel, 255);
 
-	delay(2000);
+
+
+	//Recorre la matriz de promedios y realiza la sumatoria de los valores
+	for(int m = 0; m < cantidadMuestras; m++){
+
+
+		Serial.printf("Matriz promedios: posición %i, valor %i\n", m, matrizPromediosRGB[m][0]);
+		sumaPromediados_r += matrizPromediosRGB[m][0];
+		Serial.printf("la sumaPromediados_r %i\n", sumaPromediados_r);
+		sumaPromediados_g += matrizPromediosRGB[m][1];
+		sumaPromediados_b += matrizPromediosRGB[m][2];
+
+
+
+	}
 	
+	//Realiza el promedio de los promedios
+	valoresPromediados_r = sumaPromediados_r/cantidadMuestras;
+	valoresPromediados_g = sumaPromediados_g/cantidadMuestras;
+	valoresPromediados_b = sumaPromediados_b/cantidadMuestras;
+
+	Serial.printf("Promedios de promedios --> red: %i  green: %i  blue: %i\r\n", valoresPromediados_r, valoresPromediados_g, valoresPromediados_b);
+
+	if(colorCalibrado == 1){
+
+		ROJO_PATRON.r = valoresPromediados_r;
+		ROJO_PATRON.g = valoresPromediados_g;
+		ROJO_PATRON.b = valoresPromediados_b;
+
+	}else if(colorCalibrado == 2){
+
+		VERDE_PATRON.r = valoresPromediados_r;
+		VERDE_PATRON.g = valoresPromediados_g;
+		VERDE_PATRON.b = valoresPromediados_b;
+
+
+	}else if(colorCalibrado == 3){
+
+		AZUL_PATRON.r = valoresPromediados_r;
+		AZUL_PATRON.g = valoresPromediados_g;
+		AZUL_PATRON.b = valoresPromediados_b;
+
+
+	}
+	
+	mostrarPatronesRGB();
 
 
 }
@@ -1313,3 +1333,4 @@ void setearColorNeopixel(int r, int g, int b){
 	pixels.show();
 	
 }
+
