@@ -8,6 +8,12 @@ El programa se encarga de detectar un objeto, medir su componente RGB para luego
 Utiliza driver para motor de CC, servomotor para clasificación, sensor RGB y LED de alta potencia.
 Programado en ESP32.
 
+PROXIMIDAD_UMBRAL = 50
+ADCGain = APDS9960_AGAIN_64X
+ProxGain = APDS9960_PGAIN_8X
+ADCIntegrationTime = 10
+
+
 Autor: Martín Cioffi
 Fecha: 23-11-2023
 Versión: 1.00
@@ -80,7 +86,7 @@ int valorADC = 0;
 int pinPote = 35;
 int valorMap = 0;
 int proximidad = 0;
-int PROXIMIDAD_UMBRAL = 7;//6;
+int PROXIMIDAD_UMBRAL = 50;//25;//7;//6;
 char flagSentidoMotor = 'B';
 String colorDetectado = {};
 int UMBRAL_ROJO = 80;
@@ -148,6 +154,12 @@ void setup() {
 
 	apds.setADCGain(APDS9960_AGAIN_64X);
 
+	Serial.printf("ADCIntegrationTime: %f\n", apds.getADCIntegrationTime());
+	Serial.printf("ProxGain: %i\n", apds.getProxGain());
+	Serial.printf("CalculateColorTemperature: %i\n", apds.calculateColorTemperature(255,255,255));
+	apds.setProxGain(APDS9960_PGAIN_8X);
+	apds.setADCIntegrationTime(10);
+
 	digitalWrite(motor1Pin1, HIGH);
 	digitalWrite(motor1Pin2, LOW);
 	ledcWrite(pwmChannel, 255);
@@ -182,6 +194,7 @@ void loop(void) {
 	ledcWrite(pwmChannel, 255);
 
 	proximidad = apds.readProximity();
+	//Serial.println(proximidad);
 	delay(50);
 /*
 	if(flagSimulacionColor == 1){
